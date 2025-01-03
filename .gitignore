@@ -20,3 +20,5 @@ leapc-cffi/src/leapc_cffi/*.so
 
 *.pyc
 *.pyd
+
+data/
