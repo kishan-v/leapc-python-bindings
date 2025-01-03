@@ -72,48 +72,52 @@ class HandDataTransmitter:
         self.last_known_points = None
         self.last_frame_time = None
 
-    def format_hand_data(self, hand: leap.datatypes.Hand) -> list[list]:
+    def format_hand_data(self, hand: leap.datatypes.Hand) -> list[float]:
+        """
+        Normalised points relative to wrist position
+        """
         points = []
 
         # 0: WRIST
         wrist = hand.arm.next_joint
-        points.extend([wrist.x, wrist.y, wrist.z])
+        # points.extend([wrist.x, wrist.y, wrist.z])
+        points.extend([0, 0, 0])
 
         # THUMB (1-4)
         # 1: CMC - Get from thumb metacarpal base
         thumb_cmc = hand.thumb.metacarpal.prev_joint
-        points.extend([thumb_cmc.x, thumb_cmc.y, thumb_cmc.z])
+        points.extend([thumb_cmc.x - wrist.x, thumb_cmc.y - wrist.y, thumb_cmc.z - wrist.z])
 
         # 2: MCP - Metacarpal tip/proximal base
         thumb_mcp = hand.thumb.proximal.prev_joint
-        points.extend([thumb_mcp.x, thumb_mcp.y, thumb_mcp.z])
+        points.extend([thumb_mcp.x - wrist.x, thumb_mcp.y - wrist.y, thumb_mcp.z - wrist.z])
 
         # 3: IP - Proximal tip/distal base
         thumb_ip = hand.thumb.intermediate.prev_joint
-        points.extend([thumb_ip.x, thumb_ip.y, thumb_ip.z])
+        points.extend([thumb_ip.x - wrist.x, thumb_ip.y - wrist.y, thumb_ip.z - wrist.z])
 
         # 4: TIP - Distal tip
         thumb_tip = hand.thumb.distal.next_joint
-        points.extend([thumb_tip.x, thumb_tip.y, thumb_tip.z])
+        points.extend([thumb_tip.x - wrist.x, thumb_tip.y - wrist.y, thumb_tip.z - wrist.z])
 
         # Process fingers (index, middle, ring, pinky)
         fingers = [hand.index, hand.middle, hand.ring, hand.pinky]
         for finger in fingers:
             # MCP joint (5,9,13,17) - Metacarpal tip
             mcp = finger.metacarpal.next_joint
-            points.extend([mcp.x, mcp.y, mcp.z])
+            points.extend([mcp.x - wrist.x, mcp.y - wrist.y, mcp.z - wrist.z])
 
             # PIP joint (6,10,14,18) - Proximal tip
             pip = finger.proximal.next_joint
-            points.extend([pip.x, pip.y, pip.z])
+            points.extend([pip.x - wrist.x, pip.y - wrist.y, pip.z - wrist.z])
 
             # DIP joint (7,11,15,19) - Intermediate tip
             dip = finger.intermediate.next_joint
-            points.extend([dip.x, dip.y, dip.z])
+            points.extend([dip.x - wrist.x, dip.y - wrist.y, dip.z - wrist.z])
 
             # Fingertip (8,12,16,20) - Distal tip
             tip = finger.distal.next_joint
-            points.extend([tip.x, tip.y, tip.z])
+            points.extend([tip.x - wrist.x, tip.y - wrist.y, tip.z - wrist.z])
 
         # Scale all points from mm to meters
         scaled_points = [p / 1000 for p in points]
@@ -123,7 +127,7 @@ class HandDataTransmitter:
     def send_data(self, data: str):
         self.sock.sendto(data.encode(), self.address)
 
-    def interpolate_points(self, current_points: list[list], num_samples: int) -> list[list]:
+    def interpolate_points(self, current_points: list[float], num_samples: int) -> list[list]:
         if self.last_known_points is None:
             # For first frame, duplicate current points
             return [current_points] * num_samples
